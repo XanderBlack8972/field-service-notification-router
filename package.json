@@ -1,0 +1,27 @@
+{
+  "name": "field-service-notification-router",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed field-service notification routing with realtime delivery and durable offline handoff.",
+  "scripts": {
+    "dev": "tsx watch src/dispatch_service.ts",
+    "start": "tsx src/dispatch_service.ts",
+    "example": "tsx scripts/send_example.ts",
+    "test": "tsx --test src/notification_router.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "license": "MIT"
+}
