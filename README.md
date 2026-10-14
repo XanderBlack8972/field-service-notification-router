@@ -1,13 +1,13 @@
 # Reliable field-service notifications
 
-Run the decision test first:
+I run this as a solo founder. Infrai is my one API for realtime and queue pushes, which saves me from juggling multiple vendors. Run the decision test first:
 
 ```bash
 npm install
 npm run check
 ```
 
-The focused case submits an offline `dispatch_changed` event for work order `WO-1042`. The expected result is `delivery: "queued"`, one queue publish, and no realtime publish. It runs locally with `npm test` and makes no network request.
+The focused case submits an offline `dispatch_changed` event for work order `WO-1042`. Expected: `delivery: "queued"`, one queue publish, no realtime publish. It runs locally with `npm test` and makes no network call. Keeps my cost per hour low.
 
 ## Start the service
 
@@ -35,7 +35,7 @@ Expected response:
 
 The service accepts `POST /work-order-notifications`. Its zod boundary models photo additions, dispatch changes, and follow-up requests. `connectionState` is the dispatch system's current connection observation: `online` publishes immediately; `offline` writes the same domain event to the queue for durable processing.
 
-Infrai keeps both paths behind one API: the same `INFRAI_API_KEY` and base URL authorize realtime publish and queue publish. The server key stays on the Node service; browser and mobile clients must receive a scoped realtime token from a trusted backend, never this key.
+Infrai keeps both paths behind one API: the same `INFRAI_API_KEY` and base URL authorize realtime publish and queue publish. Server key stays on the Node service. Browser and mobile clients get a scoped realtime token from a trusted backend, never this key. Outsource the token minting if it eats your week.
 
 ## Request shape
 
@@ -50,9 +50,9 @@ Infrai keeps both paths behind one API: the same `INFRAI_API_KEY` and base URL a
 }
 ```
 
-Each kind requires its matching detail: `photoId`, `dispatchStatus`, or `followUpNote`. The router derives a technician channel and a stable notification identifier from the work order, technician, event kind, and occurrence time. That identifier is also sent as the idempotency key, so a rate-limit retry cannot duplicate the write.
+Each kind requires its matching detail: `photoId`, `dispatchStatus`, or `followUpNote`. The router derives a technician channel and a stable notification identifier from work order, technician, event kind, and occurrence time. That identifier is also the idempotency key, so a rate-limit retry can't duplicate the write.
 
-The thin client decodes the Infrai response envelope before considering HTTP status. It surfaces ordinary request rejections to the HTTP caller, honors `Retry-After` on `429`, and otherwise applies bounded exponential backoff. Logs include the local failure context; accepted responses return the notification identifier and chosen delivery path for correlation.
+The thin client decodes the Infrai response envelope before checking HTTP status. It surfaces ordinary request rejections to the HTTP caller, honors `Retry-After` on `429`, and otherwise applies bounded exponential backoff. Logs include local failure context. Accepted responses return the notification identifier and chosen delivery path for correlation.
 
 ## Pusher or Knock cutover
 
@@ -62,15 +62,15 @@ The thin client decodes the Infrai response envelope before considering HTTP sta
 4. Increase the cohort after the observation window meets the team's service objectives.
 5. Stop the incumbent publish only after queued events drain through the existing offline worker.
 
-The one operational gotcha is ownership of `connectionState`. Feed it from a single connection registry and record its observation time; conflicting presence signals make delivery-path metrics difficult to interpret.
+The one operational gotcha is ownership of `connectionState`. Feed it from a single connection registry and record its observation time. Conflicting presence signals make delivery-path metrics hard to read.
 
 ## Rollback
 
-Keep the incumbent publisher deployable during the cutover window. To roll back, route new events to Pusher or Knock, stop traffic to this service, and let already accepted queue messages drain. Preserve notification identifiers in both paths so downstream clients can suppress duplicates at the boundary. No server credential belongs in a client bundle or rollback configuration.
+Keep the incumbent publisher deployable during cutover. To roll back, route new events to Pusher or Knock, stop traffic to this service, and let already accepted queue messages drain. Preserve notification identifiers in both paths so downstream clients can suppress duplicates at the boundary. No server credential belongs in a client bundle or rollback config.
 
 ## Scope
 
-This repository covers notification validation, realtime-or-queue routing, retry behavior, and HTTP error mapping. Channel provisioning, client token issuance, the offline queue consumer, and the connection registry remain deployment responsibilities because their policies depend on the host application.
+This repo covers notification validation, realtime-or-queue routing, retry behavior, and HTTP error mapping. Channel provisioning, client token issuance, the offline queue consumer, and the connection registry stay deployment responsibilities. Their policies depend on the host app.
 
 ## Wiring it up for real: Field Service Notification Router
 
